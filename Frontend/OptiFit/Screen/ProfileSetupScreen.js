@@ -1,5 +1,6 @@
 import api from "../services/api";
 import React, { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View,
   Text,
@@ -38,6 +39,18 @@ export default function ProfileSetupScreen({ navigation, route }) {
         goal,
         activityLevel: "moderate",
       });
+
+      await AsyncStorage.setItem(
+        "userProfile",
+        JSON.stringify({
+          name: name.trim(),
+          age,
+          height,
+          weight,
+          gender,
+          goal,
+        })
+      );
 
       alert("User Registered Successfully ✅");
       navigation.replace("Login");

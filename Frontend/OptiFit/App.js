@@ -7,9 +7,10 @@ import SplashScreen from "./Screen/SplashScreen";
 import LoginScreen from "./Screen/LoginScreen";
 import SignupScreen from "./Screen/SignupScreen";
 import ProfileSetupScreen from "./Screen/ProfileSetupScreen";
-import DashboardScreen from "./Screen/DashboardScreen";
 import TabNavigator from "./navigation/TabNavigator";
 import WorkoutScreen from "./Screen/WorkoutScreen";
+import WaterScreen from "./Screen/WaterScreen";
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -26,31 +27,32 @@ export default function App() {
   if (isLoggedIn === null) return null;
 
   return (
-  <GestureHandlerRootView style={{ flex: 1 }}>
-  <NavigationContainer>
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isLoggedIn ? (
-        <Stack.Screen name="MainApp">
-          {props => (
-            <TabNavigator {...props} setIsLoggedIn={setIsLoggedIn} />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isLoggedIn ? (
+            <Stack.Screen name="MainApp">
+              {props => (
+                <TabNavigator {...props} setIsLoggedIn={setIsLoggedIn} />
+              )}
+            </Stack.Screen>
+          ) : (
+            <>
+              <Stack.Screen name="Splash" component={SplashScreen} />
+              <Stack.Screen name="Login">
+                {props => (
+                  <LoginScreen {...props} setIsLoggedIn={setIsLoggedIn} />
+                )}
+              </Stack.Screen>
+              <Stack.Screen name="Signup" component={SignupScreen} />
+              <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+              <Stack.Screen name="Workout" component={WorkoutScreen} />
+            </>
           )}
-        </Stack.Screen>
-      ) : (
-        <>
-          <Stack.Screen name="Splash" component={SplashScreen} />
-          
-          <Stack.Screen name="Login">
-            {props => (
-              <LoginScreen {...props} setIsLoggedIn={setIsLoggedIn} />
-            )}
-          </Stack.Screen>
 
-          <Stack.Screen name="Signup" component={SignupScreen} />
-          <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
-          <Stack.Screen name="Workout" component={WorkoutScreen} />
-        </>
-      )}
-    </Stack.Navigator>
-  </NavigationContainer>
-  </GestureHandlerRootView>
-);}
+          <Stack.Screen name="Water" component={WaterScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
+  );
+}

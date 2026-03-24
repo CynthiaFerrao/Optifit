@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import FoodScreen from "../Screen/FoodScreen";
 import DashboardScreen from "../Screen/DashboardScreen";
 import { View, Text } from "react-native";
+import WaterScreen from "../Screen/WaterScreen";
 import WorkoutScreen from "../Screen/WorkoutScreen";
 import ProfileScreen from "../Screen/ProfileScreen";
 const Tab = createBottomTabNavigator();

@@ -15,11 +15,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
-import api from "../services/api";
+//import api from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function DashboardScreen({ setIsLoggedIn }) {
+export default function DashboardScreen({ navigation, setIsLoggedIn }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,14 +31,16 @@ export default function DashboardScreen({ setIsLoggedIn }) {
 
   const checkSleepStatus = async () => {
   try {
-    const res = await api.get("/sleep/today");
+    //const res = await api.get("/sleep/today");
 
+    /*
     if (!res.data) {
       setSleepLogged(false);
       setSleepModalVisible(true);
     } else {
       setSleepLogged(true);
     }
+    */
 
   } catch (error) {
     console.log(error.response?.data || error.message);
@@ -47,8 +49,16 @@ export default function DashboardScreen({ setIsLoggedIn }) {
 
   const loadDashboard = async () => {
     try {
-      const res = await api.get("/dashboard");
-      setData(res.data);
+      setData({
+        calories: { target: 2000, consumed: 1200, remaining: 800 },
+        protein: { target: 120, consumed: 60 },
+        water: { consumed: 0 },
+        steps: { steps: 0 },
+        sleep: { sleepHours: 0 },
+        recovery: { score: 75 },
+      });
+      //const res = await api.get("/dashboard");
+      //setData(res.data);
     } catch (error) {
       console.log(error.response?.data || error.message);
     } finally {
@@ -59,7 +69,7 @@ export default function DashboardScreen({ setIsLoggedIn }) {
 
   useEffect(() => {
     loadDashboard();
-    checkSleepStatus();
+    //checkSleepStatus();
   }, []);
 
   useEffect(() => {
@@ -83,9 +93,9 @@ export default function DashboardScreen({ setIsLoggedIn }) {
   const submitSleep = async () => {
     if (!sleepHours) return;
     try {
-      await api.post("/sleep", {
-        sleepHours: Number(sleepHours),
-      });
+      //await api.post("/sleep", {
+        //sleepHours: Number(sleepHours),
+      //});
       setSleepLogged(true);
       setSleepModalVisible(false);
       setSleepHours("");
@@ -239,7 +249,9 @@ export default function DashboardScreen({ setIsLoggedIn }) {
               <Text style={styles.quickText}>Log Food</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.quickBtn}>
+            <TouchableOpacity 
+              style={styles.quickBtn}
+              onPress={() => navigation.navigate("Water")}>
               <Ionicons name="water" size={22} color="#fff" />
               <Text style={styles.quickText}>Water</Text>
             </TouchableOpacity>
