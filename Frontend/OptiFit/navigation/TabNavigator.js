@@ -1,15 +1,11 @@
-import React from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
-import FoodScreen from "../Screen/FoodScreen";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import React from "react";
 import DashboardScreen from "../Screen/DashboardScreen";
-import { View, Text } from "react-native";
-import WaterScreen from "../Screen/WaterScreen";
-import WorkoutScreen from "../Screen/WorkoutScreen";
+import FoodScreen from "../Screen/FoodScreen";
 import ProfileScreen from "../Screen/ProfileScreen";
+import WorkoutScreen from "../Screen/WorkoutScreen";
 const Tab = createBottomTabNavigator();
-
-
 
 export default function TabNavigator({ setIsLoggedIn }) {
   return (
@@ -44,19 +40,17 @@ export default function TabNavigator({ setIsLoggedIn }) {
       })}
     >
       <Tab.Screen name="Dashboard">
-        {props => (
+        {(props) => (
           <DashboardScreen {...props} setIsLoggedIn={setIsLoggedIn} />
         )}
       </Tab.Screen>
 
       <Tab.Screen name="Food" component={FoodScreen} />
       <Tab.Screen name="Workout" component={WorkoutScreen} />
-      
+
       <Tab.Screen name="Profile">
-      {props => (
-    <ProfileScreen {...props} setIsLoggedIn={setIsLoggedIn} />
-  )}
-</Tab.Screen>
+        {(props) => <ProfileScreen {...props} setIsLoggedIn={setIsLoggedIn} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }

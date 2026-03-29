@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Animated,
   FlatList,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 
@@ -21,51 +22,76 @@ export default function WaterScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const dropAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    const loadWater = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("water");
+        const current = stored ? parseInt(stored, 10) : 0;
+        setCurrentWater(current);
+      } catch (error) {
+        console.log("Load water error:", error);
+      }
+    };
+
+    loadWater();
+  }, []);
+
   const remaining = Math.max(goal - currentWater, 0);
   const progress = Math.min((currentWater / goal) * 100, 100);
 
-  const addWater = (amount) => {
-    setCurrentWater((prev) => prev + amount);
-    setLastAdded(amount);
+  const addWater = async (amount) => {
+    try {
+      const stored = await AsyncStorage.getItem("water");
+      let current = stored ? parseInt(stored, 10) : 0;
 
-    const newEntry = {
-      id: Date.now().toString(),
-      amount,
-      time: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+      const updated = current + amount;
 
-    setHistory((prev) => [newEntry, ...prev]);
+      await AsyncStorage.setItem("water", updated.toString());
 
-    scaleAnim.setValue(0.9);
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-      friction: 4,
-    }).start();
+      setCurrentWater(updated);
+      setLastAdded(amount);
 
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+      const newEntry = {
+        id: Date.now().toString(),
+        amount,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
 
-    dropAnim.setValue(0);
-    Animated.sequence([
-      Animated.timing(dropAnim, {
-        toValue: -12,
-        duration: 180,
+      setHistory((prev) => [newEntry, ...prev]);
+
+      scaleAnim.setValue(0.9);
+      Animated.spring(scaleAnim, {
+        toValue: 1,
         useNativeDriver: true,
-      }),
-      Animated.timing(dropAnim, {
-        toValue: 0,
-        duration: 180,
+        friction: 4,
+      }).start();
+
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
         useNativeDriver: true,
-      }),
-    ]).start();
+      }).start();
+
+      dropAnim.setValue(0);
+      Animated.sequence([
+        Animated.timing(dropAnim, {
+          toValue: -12,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dropAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } catch (error) {
+      console.log("Water error:", error);
+    }
   };
 
   const reminderText = useMemo(() => {

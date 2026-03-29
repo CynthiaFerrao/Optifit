@@ -10,6 +10,7 @@ import ProfileSetupScreen from "./Screen/ProfileSetupScreen";
 import TabNavigator from "./navigation/TabNavigator";
 import WorkoutScreen from "./Screen/WorkoutScreen";
 import WaterScreen from "./Screen/WaterScreen";
+import FoodScannerScreen from "./Screen/FoodScannerScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -51,6 +52,7 @@ export default function App() {
           )}
 
           <Stack.Screen name="Water" component={WaterScreen} />
+          <Stack.Screen name="FoodScanner" component={FoodScannerScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>

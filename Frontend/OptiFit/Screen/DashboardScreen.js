@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-  Animated,
-  RefreshControl,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
-//import api from "../services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function DashboardScreen({ navigation, setIsLoggedIn }) {
   const [data, setData] = useState(null);
@@ -29,36 +29,41 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
   const [sleepHours, setSleepHours] = useState("");
   const [sleepLogged, setSleepLogged] = useState(false);
 
-  const checkSleepStatus = async () => {
-  try {
-    //const res = await api.get("/sleep/today");
-
-    /*
-    if (!res.data) {
-      setSleepLogged(false);
-      setSleepModalVisible(true);
-    } else {
-      setSleepLogged(true);
-    }
-    */
-
-  } catch (error) {
-    console.log(error.response?.data || error.message);
-  }
-};
-
   const loadDashboard = async () => {
     try {
-      setData({
-        calories: { target: 2000, consumed: 1200, remaining: 800 },
-        protein: { target: 120, consumed: 60 },
-        water: { consumed: 0 },
-        steps: { steps: 0 },
-        sleep: { sleepHours: 0 },
-        recovery: { score: 75 },
-      });
-      //const res = await api.get("/dashboard");
-      //setData(res.data);
+      const storedWater = await AsyncStorage.getItem("water");
+      const waterConsumed = storedWater ? parseInt(storedWater, 10) : 0;
+
+      const storedSleep = await AsyncStorage.getItem("sleepHours");
+      const storedSleepDate = await AsyncStorage.getItem("sleepDate");
+
+      const today = new Date().toDateString();
+
+      let sleepValue = 0;
+      let isSleepLoggedToday = false;
+
+      if (storedSleep && storedSleepDate === today) {
+        sleepValue = parseFloat(storedSleep);
+        isSleepLoggedToday = true;
+      }
+
+      setData((prev) => ({
+        calories: prev?.calories || {
+          target: 2000,
+          consumed: 1200,
+          remaining: 800,
+        },
+        protein: prev?.protein || {
+          target: 120,
+          consumed: 60,
+        },
+        water: { consumed: waterConsumed },
+        steps: prev?.steps || { steps: 0 },
+        sleep: { sleepHours: sleepValue },
+        recovery: prev?.recovery || { score: 75 },
+      }));
+
+      setSleepLogged(isSleepLoggedToday);
     } catch (error) {
       console.log(error.response?.data || error.message);
     } finally {
@@ -69,8 +74,13 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
 
   useEffect(() => {
     loadDashboard();
-    //checkSleepStatus();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [])
+  );
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -92,20 +102,27 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
 
   const submitSleep = async () => {
     if (!sleepHours) return;
-    try {
-      //await api.post("/sleep", {
-        //sleepHours: Number(sleepHours),
-      //});
-      setSleepLogged(true);
-      setSleepModalVisible(false);
-      setSleepHours("");
-      loadDashboard();
-    } catch (error) {
-      console.log(error.response?.data || error.message);
-    }
+
+    const enteredSleep = parseFloat(sleepHours);
+
+    if (isNaN(enteredSleep)) return;
+
+    const today = new Date().toDateString();
+
+    await AsyncStorage.setItem("sleepHours", enteredSleep.toString());
+    await AsyncStorage.setItem("sleepDate", today);
+
+    setData((prev) => ({
+      ...prev,
+      sleep: { sleepHours: enteredSleep },
+    }));
+
+    setSleepLogged(true);
+    setSleepModalVisible(false);
+    setSleepHours("");
   };
 
-  if (loading) {
+  if (loading || !data) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#00E676" />
@@ -120,6 +137,9 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
   const proteinTarget = data?.protein?.target || 0;
   const proteinConsumed = data?.protein?.consumed || 0;
 
+  const sleepHoursValue = data?.sleep?.sleepHours || 0;
+  const sleepDebt = Math.max(8 - sleepHoursValue, 0);
+
   const fillPercentage =
     calorieTarget > 0
       ? Math.min((calorieConsumed / calorieTarget) * 100, 100)
@@ -130,18 +150,26 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
       ? Math.min((proteinConsumed / proteinTarget) * 100, 100)
       : 0;
 
-  const calorieColor =
-    calorieRemaining < 0 ? "#ef4444" : "#00E676";
+  const calorieColor = calorieRemaining < 0 ? "#ef4444" : "#00E676";
+
+  const sleepHoursColor =
+    sleepHoursValue <= 3
+      ? "#ef4444"
+      : sleepHoursValue <= 6
+      ? "#facc15"
+      : sleepHoursValue <= 8
+      ? "#00E676"
+      : "#00E676";
+
+  const sleepDebtColor =
+    sleepDebt === 0 ? "#00E676" : sleepDebt <= 2 ? "#facc15" : "#ef4444";
 
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? "Good Morning" :
-    hour < 18 ? "Good Afternoon" :
-    "Good Evening";
+    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
 
   return (
     <>
-      {/* Sleep Modal */}
       <Modal visible={sleepModalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -161,175 +189,177 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
               onChangeText={setSleepHours}
             />
 
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={submitSleep}
-            >
+            <TouchableOpacity style={styles.modalButton} onPress={submitSleep}>
               <Text style={styles.modalButtonText}>Save</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      <SafeAreaView style={{flex:1,backgroundColor:"#0B1220"}}>
-      <ScrollView
-        style={styles.container}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={calorieColor}
-          />
-        }
-      >
-        <Animated.View style={{ opacity: fadeAnim }}>
 
-          {/* HEADER */}
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.logo}>OPTIFIT</Text>
-              <Text style={styles.greeting}>{greeting}</Text>
-            </View>
-            <Ionicons name="notifications-outline" size={24} color="#fff" />
-          </View>
-
-          <Text style={styles.sectionTitle}>Today</Text>
-
-          {/* CALORIE RING */}
-          <View style={styles.hero}>
-            <AnimatedCircularProgress
-              size={220}
-              width={12}
-              fill={fillPercentage}
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#0B1220" }}>
+        <ScrollView
+          style={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
               tintColor={calorieColor}
-              backgroundColor="#1E293B"
-              lineCap="round"
-            >
-              {() => (
-                <>
-                  <Text style={styles.remaining}>
-                    {calorieRemaining}
-                  </Text>
-                  <Text style={styles.subText}>Calories Remaining</Text>
-                </>
-              )}
-            </AnimatedCircularProgress>
+            />
+          }
+        >
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.logo}>OPTIFIT</Text>
+                <Text style={styles.greeting}>{greeting}</Text>
+              </View>
+              <Ionicons name="notifications-outline" size={24} color="#fff" />
+            </View>
 
-            <Text style={styles.meta}>
-              {calorieConsumed} consumed • Goal {calorieTarget}
-            </Text>
-          </View>
+            <Text style={styles.sectionTitle}>Today</Text>
 
-          {/* PROTEIN RING */}
-          <View style={styles.hero}>
-            <AnimatedCircularProgress
-              size={160}
-              width={10}
-              fill={proteinFill}
-              tintColor="#38bdf8"
-              backgroundColor="#1E293B"
-              lineCap="round"
-            >
-              {() => (
-                <>
-                  <Text style={styles.remainingSmall}>
-                    {proteinConsumed}/{proteinTarget}
-                  </Text>
-                  <Text style={styles.subText}>Protein (g)</Text>
-                </>
-              )}
-            </AnimatedCircularProgress>
-          </View>
+            <View style={styles.hero}>
+              <AnimatedCircularProgress
+                size={220}
+                width={12}
+                fill={fillPercentage}
+                tintColor={calorieColor}
+                backgroundColor="#1E293B"
+                lineCap="round"
+              >
+                {() => (
+                  <>
+                    <Text style={styles.remaining}>{calorieRemaining}</Text>
+                    <Text style={styles.subText}>Calories Remaining</Text>
+                  </>
+                )}
+              </AnimatedCircularProgress>
 
-          {/* QUICK ACTIONS */}
-          <Text style={styles.overviewTitle}>Quick Actions</Text>
-
-          <View style={styles.quickActions}>
-            <TouchableOpacity style={styles.quickBtn}>
-              <Ionicons name="restaurant" size={22} color="#fff" />
-              <Text style={styles.quickText}>Log Food</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.quickBtn}
-              onPress={() => navigation.navigate("Water")}>
-              <Ionicons name="water" size={22} color="#fff" />
-              <Text style={styles.quickText}>Water</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.quickBtn}>
-              <Ionicons name="walk" size={22} color="#fff" />
-              <Text style={styles.quickText}>Steps</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-  style={styles.quickBtn}
-  onPress={() => {
-    if (!sleepLogged) {
-      setSleepModalVisible(true);
-    }
-  }}
->
-  <Ionicons name="moon" size={22} color="#fff" />
-  <Text style={styles.quickText}>
-  {sleepLogged ? "Logged" : "Sleep"}
-</Text>
-</TouchableOpacity>
-            
-          </View>
-
-          {/* HEALTH OVERVIEW */}
-          <Text style={styles.overviewTitle}>Health Overview</Text>
-
-          <View style={styles.overviewContainer}>
-
-            <View style={styles.overviewCard}>
-              <Ionicons name="moon" size={28} color="#8b5cf6" />
-              <Text style={styles.overviewValue}>
-                {data?.sleep?.sleepHours || 0} hrs
+              <Text style={styles.meta}>
+                {calorieConsumed} consumed • Goal {calorieTarget}
               </Text>
-              <Text style={styles.overviewLabel}>Sleep</Text>
             </View>
 
-            <View style={styles.overviewCard}>
-              <Ionicons name="water" size={28} color="#06b6d4" />
-              <Text style={styles.overviewValue}>
-                {data?.water?.consumed || 0} ml
+            <View style={styles.hero}>
+              <AnimatedCircularProgress
+                size={160}
+                width={10}
+                fill={proteinFill}
+                tintColor="#38bdf8"
+                backgroundColor="#1E293B"
+                lineCap="round"
+              >
+                {() => (
+                  <>
+                    <Text style={styles.remainingSmall}>
+                      {proteinConsumed}/{proteinTarget}
+                    </Text>
+                    <Text style={styles.subText}>Protein (g)</Text>
+                  </>
+                )}
+              </AnimatedCircularProgress>
+            </View>
+
+            <Text style={styles.overviewTitle}>Quick Actions</Text>
+
+            <View style={styles.quickActions}>
+              <TouchableOpacity
+                style={styles.quickBtn}
+                onPress={() => navigation.navigate("FoodScanner")}
+              >
+                <Ionicons name="restaurant" size={22} color="#fff" />
+                <Text style={styles.quickText}>Log Food</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickBtn}
+                onPress={() => navigation.navigate("Water")}
+              >
+                <Ionicons name="water" size={22} color="#fff" />
+                <Text style={styles.quickText}>Water</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.quickBtn}>
+                <Ionicons name="walk" size={22} color="#fff" />
+                <Text style={styles.quickText}>Steps</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.quickBtn}
+                onPress={() => {
+                  if (!sleepLogged) {
+                    setSleepModalVisible(true);
+                  }
+                }}
+              >
+                <Ionicons name="moon" size={22} color="#fff" />
+                <Text style={styles.quickText}>
+                  {sleepLogged ? "Logged" : "Sleep"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.overviewTitle}>Health Overview</Text>
+
+            <View style={styles.overviewContainer}>
+              <View style={styles.overviewCard}>
+                <Ionicons name="moon" size={28} color={sleepHoursColor} />
+                <Text
+                  style={[styles.overviewValue, { color: sleepHoursColor }]}
+                >
+                  {sleepHoursValue} hrs
+                </Text>
+                <Text style={styles.overviewLabel}>Sleep</Text>
+              </View>
+
+              <View style={styles.overviewCard}>
+                <Ionicons name="water" size={28} color="#06b6d4" />
+                <Text style={styles.overviewValue}>
+                  {data?.water?.consumed || 0} ml
+                </Text>
+                <Text style={styles.overviewLabel}>Water</Text>
+              </View>
+
+              <View style={styles.overviewCard}>
+                <Ionicons name="walk" size={28} color="#facc15" />
+                <Text style={styles.overviewValue}>
+                  {data?.steps?.steps || 0}
+                </Text>
+                <Text style={styles.overviewLabel}>Steps</Text>
+              </View>
+
+              <View style={styles.overviewCard}>
+                <Ionicons
+                  name="trending-down"
+                  size={28}
+                  color={sleepDebtColor}
+                />
+                <Text
+                  style={[styles.overviewValue, { color: sleepDebtColor }]}
+                >
+                  {sleepDebt.toFixed(1)} hrs
+                </Text>
+                <Text style={styles.overviewLabel}>Sleep Debt</Text>
+              </View>
+            </View>
+
+            <View style={styles.recoveryCard}>
+              <Text style={styles.recoveryTitle}>Recovery Score</Text>
+              <Text style={styles.recoveryValue}>
+                {data?.recovery?.score || 75}%
               </Text>
-              <Text style={styles.overviewLabel}>Water</Text>
-            </View>
-
-            <View style={styles.overviewCard}>
-              <Ionicons name="walk" size={28} color="#facc15" />
-              <Text style={styles.overviewValue}>
-                {data?.steps?.steps || 0}
+              <Text style={styles.recoverySub}>
+                Based on sleep, protein & activity
               </Text>
-              <Text style={styles.overviewLabel}>Steps</Text>
             </View>
-
-            <View style={styles.overviewCard}>
-              <Ionicons name="trending-down" size={28} color="#ef4444" />
-              <Text style={styles.overviewValue}>--</Text>
-              <Text style={styles.overviewLabel}>Sleep Debt</Text>
-            </View>
-
-          </View>
-
-          {/* RECOVERY SCORE */}
-          <View style={styles.recoveryCard}>
-            <Text style={styles.recoveryTitle}>Recovery Score</Text>
-            <Text style={styles.recoveryValue}>
-              {data?.recovery?.score || 75}%
-            </Text>
-            <Text style={styles.recoverySub}>
-              Based on sleep, protein & activity
-            </Text>
-          </View>
-
-        </Animated.View>
-      </ScrollView>
+          </Animated.View>
+        </ScrollView>
       </SafeAreaView>
-      {/* FLOATING BUTTON */}
-      <TouchableOpacity style={styles.fab}>
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("FoodScanner")}
+      >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
     </>
