@@ -10,6 +10,10 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
+import {
+  registerForNotifications,
+  scheduleWaterReminder,
+} from "../utils/notifications";
 
 export default function WaterScreen() {
   const [currentWater, setCurrentWater] = useState(0);
@@ -23,17 +27,23 @@ export default function WaterScreen() {
   const dropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loadWater = async () => {
+    registerForNotifications();
+
+    const loadWaterData = async () => {
       try {
-        const stored = await AsyncStorage.getItem("water");
-        const current = stored ? parseInt(stored, 10) : 0;
+        const storedWater = await AsyncStorage.getItem("water");
+        const current = storedWater ? parseInt(storedWater, 10) : 0;
         setCurrentWater(current);
+
+        const storedHistory = await AsyncStorage.getItem("waterHistory");
+        const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
+        setHistory(parsedHistory);
       } catch (error) {
-        console.log("Load water error:", error);
+        console.log("Load water data error:", error);
       }
     };
 
-    loadWater();
+    loadWaterData();
   }, []);
 
   const remaining = Math.max(goal - currentWater, 0);
@@ -41,15 +51,11 @@ export default function WaterScreen() {
 
   const addWater = async (amount) => {
     try {
-      const stored = await AsyncStorage.getItem("water");
-      let current = stored ? parseInt(stored, 10) : 0;
+      const storedWater = await AsyncStorage.getItem("water");
+      const current = storedWater ? parseInt(storedWater, 10) : 0;
 
-      const updated = current + amount;
-
-      await AsyncStorage.setItem("water", updated.toString());
-
-      setCurrentWater(updated);
-      setLastAdded(amount);
+      const updatedWater = current + amount;
+      await AsyncStorage.setItem("water", updatedWater.toString());
 
       const newEntry = {
         id: Date.now().toString(),
@@ -60,7 +66,15 @@ export default function WaterScreen() {
         }),
       };
 
-      setHistory((prev) => [newEntry, ...prev]);
+      const updatedHistory = [newEntry, ...history];
+      await AsyncStorage.setItem(
+        "waterHistory",
+        JSON.stringify(updatedHistory)
+      );
+
+      setCurrentWater(updatedWater);
+      setHistory(updatedHistory);
+      setLastAdded(amount);
 
       scaleAnim.setValue(0.9);
       Animated.spring(scaleAnim, {
@@ -139,10 +153,7 @@ export default function WaterScreen() {
         <Text style={styles.progressText}>{Math.round(progress)}% completed</Text>
       </Animated.View>
 
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => addWater(100)}
-      >
+      <TouchableOpacity style={styles.addButton} onPress={() => addWater(100)}>
         <Ionicons name="add-circle-outline" size={20} color="#fff" />
         <Text style={styles.addButtonText}> Add 100 ml</Text>
       </TouchableOpacity>
@@ -158,9 +169,25 @@ export default function WaterScreen() {
           <TouchableOpacity
             style={[
               styles.reminderBtn,
+              selectedReminder === "15 min" && styles.activeReminder,
+            ]}
+            onPress={async () => {
+              setSelectedReminder("15 min");
+              await scheduleWaterReminder(15);
+            }}
+          >
+            <Text style={styles.reminderBtnText}>15 min</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.reminderBtn,
               selectedReminder === "30 min" && styles.activeReminder,
             ]}
-            onPress={() => setSelectedReminder("30 min")}
+            onPress={async () => {
+              setSelectedReminder("30 min");
+              await scheduleWaterReminder(30);
+            }}
           >
             <Text style={styles.reminderBtnText}>30 min</Text>
           </TouchableOpacity>
@@ -170,19 +197,12 @@ export default function WaterScreen() {
               styles.reminderBtn,
               selectedReminder === "1 hr" && styles.activeReminder,
             ]}
-            onPress={() => setSelectedReminder("1 hr")}
+            onPress={async () => {
+              setSelectedReminder("1 hr");
+              await scheduleWaterReminder(60);
+            }}
           >
             <Text style={styles.reminderBtnText}>1 hr</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.reminderBtn,
-              selectedReminder === "2 hr" && styles.activeReminder,
-            ]}
-            onPress={() => setSelectedReminder("2 hr")}
-          >
-            <Text style={styles.reminderBtnText}>2 hr</Text>
           </TouchableOpacity>
         </View>
 
