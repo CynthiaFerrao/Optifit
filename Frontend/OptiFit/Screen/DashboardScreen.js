@@ -65,7 +65,7 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
 
       setSleepLogged(isSleepLoggedToday);
     } catch (error) {
-      console.log(error.response?.data || error.message);
+      console.log(error?.response?.data || error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -104,22 +104,33 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
     if (!sleepHours) return;
 
     const enteredSleep = parseFloat(sleepHours);
-
     if (isNaN(enteredSleep)) return;
 
     const today = new Date().toDateString();
+    const todayKey = new Date().toISOString().split("T")[0];
 
-    await AsyncStorage.setItem("sleepHours", enteredSleep.toString());
-    await AsyncStorage.setItem("sleepDate", today);
+    try {
+      await AsyncStorage.setItem("sleepHours", enteredSleep.toString());
+      await AsyncStorage.setItem("sleepDate", today);
 
-    setData((prev) => ({
-      ...prev,
-      sleep: { sleepHours: enteredSleep },
-    }));
+      const existingHistory = await AsyncStorage.getItem("sleepHistory");
+      const parsedHistory = existingHistory ? JSON.parse(existingHistory) : {};
 
-    setSleepLogged(true);
-    setSleepModalVisible(false);
-    setSleepHours("");
+      parsedHistory[todayKey] = enteredSleep;
+
+      await AsyncStorage.setItem("sleepHistory", JSON.stringify(parsedHistory));
+
+      setData((prev) => ({
+        ...prev,
+        sleep: { sleepHours: enteredSleep },
+      }));
+
+      setSleepLogged(true);
+      setSleepModalVisible(false);
+      setSleepHours("");
+    } catch (error) {
+      console.log("Error saving sleep:", error);
+    }
   };
 
   if (loading || !data) {
@@ -157,16 +168,26 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
       ? "#ef4444"
       : sleepHoursValue <= 6
       ? "#facc15"
-      : sleepHoursValue <= 8
-      ? "#00E676"
       : "#00E676";
 
   const sleepDebtColor =
     sleepDebt === 0 ? "#00E676" : sleepDebt <= 2 ? "#facc15" : "#ef4444";
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+
+    if (hour >= 5 && hour < 12) {
+      return "Good Morning";
+    } else if (hour >= 12 && hour < 17) {
+      return "Good Afternoon";
+    } else if (hour >= 17 && hour < 20) {
+      return "Good Evening";
+    } else {
+      return "Good Night";
+    }
+  };
+
+  const greeting = getGreeting();
 
   return (
     <>
@@ -328,7 +349,10 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
                 <Text style={styles.overviewLabel}>Steps</Text>
               </View>
 
-              <View style={styles.overviewCard}>
+              <TouchableOpacity
+                style={styles.overviewCard}
+                onPress={() => navigation.navigate("SleepDebt")}
+              >
                 <Ionicons
                   name="trending-down"
                   size={28}
@@ -340,7 +364,8 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
                   {sleepDebt.toFixed(1)} hrs
                 </Text>
                 <Text style={styles.overviewLabel}>Sleep Debt</Text>
-              </View>
+                <Text style={styles.sleepDebtHint}>Tap to view history</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.recoveryCard}>
@@ -352,6 +377,11 @@ export default function DashboardScreen({ navigation, setIsLoggedIn }) {
                 Based on sleep, protein & activity
               </Text>
             </View>
+
+            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={18} color="#fff" />
+              <Text style={styles.logoutText}>Logout</Text>
+            </TouchableOpacity>
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
@@ -487,11 +517,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
+  sleepDebtHint: {
+    color: "#64748B",
+    fontSize: 11,
+    marginTop: 4,
+  },
+
   recoveryCard: {
     backgroundColor: "#1E293B",
     padding: 20,
     borderRadius: 20,
-    marginBottom: 30,
+    marginBottom: 20,
     alignItems: "center",
   },
 
@@ -509,6 +545,23 @@ const styles = StyleSheet.create({
   recoverySub: {
     color: "#64748B",
     fontSize: 12,
+  },
+
+  logoutBtn: {
+    backgroundColor: "#1E293B",
+    marginBottom: 110,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  logoutText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 14,
   },
 
   fab: {

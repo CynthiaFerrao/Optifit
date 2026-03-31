@@ -11,6 +11,7 @@ import TabNavigator from "./navigation/TabNavigator";
 import WorkoutScreen from "./Screen/WorkoutScreen";
 import WaterScreen from "./Screen/WaterScreen";
 import FoodScannerScreen from "./Screen/FoodScannerScreen";
+import SleepDebtScreen from "./Screen/SleepDebtScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,7 +34,7 @@ export default function App() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {isLoggedIn ? (
             <Stack.Screen name="MainApp">
-              {props => (
+              {(props) => (
                 <TabNavigator {...props} setIsLoggedIn={setIsLoggedIn} />
               )}
             </Stack.Screen>
@@ -41,18 +42,22 @@ export default function App() {
             <>
               <Stack.Screen name="Splash" component={SplashScreen} />
               <Stack.Screen name="Login">
-                {props => (
+                {(props) => (
                   <LoginScreen {...props} setIsLoggedIn={setIsLoggedIn} />
                 )}
               </Stack.Screen>
               <Stack.Screen name="Signup" component={SignupScreen} />
-              <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
+              <Stack.Screen
+                name="ProfileSetup"
+                component={ProfileSetupScreen}
+              />
               <Stack.Screen name="Workout" component={WorkoutScreen} />
             </>
           )}
 
           <Stack.Screen name="Water" component={WaterScreen} />
           <Stack.Screen name="FoodScanner" component={FoodScannerScreen} />
+          <Stack.Screen name="SleepDebt" component={SleepDebtScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
